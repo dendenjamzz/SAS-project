@@ -1,0 +1,54 @@
+/* 1. Define custom tiers (Formatting) */
+proc format;
+    value score_fmt
+        0 -< 400 = 'High Risk'
+        400 -< 700 = 'Standard'
+        700 - high = 'Elite';
+run;
+
+/* 2. Generate Synthetic Data (Simulation) */
+data Customer_Base;
+    length CustomerID 8;
+    do i = 1 to 100;
+        CustomerID = 1000 + i;
+        /* Randomly generate financial metrics */
+        Credit_Limit = round(rand("Uniform") * 10000 + 2000);
+        Current_Balance = round(rand("Uniform") * Credit_Limit);
+        Payment_History = round(rand("Uniform") * 100); /* 0-100 score */
+        output;
+    end;
+    drop i;
+run;
+
+/* 3. Heuristic Scoring Logic (The "Fitness" equivalent) */
+data Risk_Analysis;
+    set Customer_Base;
+    
+    /* Calculate Utilization Ratio */
+    Utilization = (Current_Balance / Credit_Limit);
+    
+    /* Heuristic Score: Higher Payment History and Lower Utilization = Better Score */
+    /* Formula: (History * 7) - (Utilization * 300) */
+    Evolutionary_Score = (Payment_History * 7) - (Utilization * 300) + 200;
+    
+    /* Assign Tier based on Heuristic */
+    Customer_Tier = put(Evolutionary_Score, score_fmt.);
+    
+    /* Flag for "Selection" (High Risk customers to be reviewed) */
+    if Customer_Tier = 'High Risk' then Action_Required = 'YES';
+    else Action_Required = 'NO ';
+run;
+
+/* 4. Generate Statistical Report */
+title "Customer Evolutionary Risk Report";
+proc means data=Risk_Analysis mean std min max;
+    class Customer_Tier;
+    var Evolutionary_Score Utilization;
+run;
+
+/* 5. Final Selection List */
+proc print data=Risk_Analysis (obs=15);
+    where Action_Required = 'YES';
+    var CustomerID Evolutionary_Score Customer_Tier;
+    title "Immediate Review List: High Risk Segment";
+run;
